@@ -43,8 +43,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SKIPLISTUNIQUEINDEX_H_
-#define SKIPLISTUNIQUEINDEX_H_
+#ifndef BINARYTREEUNIQUEINDEX_H_
+#define BINARYTREEUNIQUEINDEX_H_
 
 //#include <map>
 #include "slp/skiplist_map.h"
@@ -60,7 +60,7 @@ namespace voltdb {
  * @see TableIndex
  */
 template<typename KeyType, class KeyComparator, class KeyEqualityChecker>
-class SkipListUniqueIndex : public TableIndex
+class BinaryTreeUniqueIndex : public TableIndex
 {
     friend class TableIndexFactory;
 
@@ -70,7 +70,7 @@ class SkipListUniqueIndex : public TableIndex
 
 public:
 
-    ~SkipListUniqueIndex() {
+    ~BinaryTreeUniqueIndex() {
         delete m_entries;
         delete m_allocator;
     };
@@ -248,7 +248,7 @@ public:
         return m_memoryEstimate;
     }
 
-    std::string getTypeName() const { return "SkipListUniqueIndex"; };
+    std::string getTypeName() const { return "BinaryTreeUniqueIndex"; };
     std::string debug() const
     {
         std::ostringstream buffer;
@@ -265,7 +265,7 @@ public:
         return (ret);
     }
 protected:
-    SkipListUniqueIndex(const TableIndexScheme &scheme) :
+    BinaryTreeUniqueIndex(const TableIndexScheme &scheme) :
         TableIndex(scheme),
         m_begin(true),
         m_eq(m_keySchema)
@@ -318,4 +318,4 @@ protected:
 
 }
 
-#endif // SKIPLISTUNIQUEINDEX_H_
+#endif // BINARYTREEUNIQUEINDEX_H_
