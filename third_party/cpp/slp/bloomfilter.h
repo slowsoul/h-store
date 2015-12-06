@@ -1,9 +1,9 @@
 #ifndef BLOOMFILTER_H_HEADER
 #define BLOOMFILTER_H_HEADER
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
 
 namespace cmu {
 

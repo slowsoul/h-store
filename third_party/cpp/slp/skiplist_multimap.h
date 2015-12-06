@@ -49,7 +49,7 @@ class skiplist_multimap_ro;
 template <typename _Key, typename _Data,
           typename _Compare = std::less<_Key>,
           typename _Traits = skiplist_default_map_traits<_Key, _Data>,
-          typename _Alloc = std::allocator<std::pair<_Key, _Data>>>
+          typename _Alloc = std::allocator<std::pair<_Key, _Data> > >
 class skiplist_multimap
 {
 #define SL_FRIENDS friend class skiplist_multimap_compact<_Key, _Data, _Compare, _Traits, _Alloc>;
@@ -243,6 +243,20 @@ public:
         {
             return (x.currnode != currnode || x.currindex != currindex);
         }
+
+        inline bool is_invalid() const
+        {
+            return currnode == NULL;
+        }
+
+        inline bool is_end() const
+        {
+            short end_index = currnode->count;
+            if (currnode->right == NULL) {
+                --end_index;
+            }
+            return (currindex == end_index);
+        }
     };
 
     class const_iterator {
@@ -387,6 +401,20 @@ public:
         inline bool operator != (const const_iterator &x) const
         {
             return (x.currnode != currnode || x.currindex != currindex);
+        }
+
+        inline bool is_invalid() const
+        {
+            return currnode == NULL;
+        }
+
+        inline bool is_end() const
+        {
+            short end_index = currnode->count;
+            if (currnode->right == NULL) {
+                --end_index;
+            }
+            return (currindex == end_index);
         }
     };
 
@@ -536,6 +564,16 @@ public:
         inline bool operator != (const reverse_iterator &x) const
         {
             return (x.currnode != currnode || x.currindex != currindex);
+        }
+
+        inline bool is_invalid() const
+        {
+            return currnode == NULL;
+        }
+
+        inline bool is_end() const
+        {
+            return currindex == 0;
         }
     };
 
@@ -690,6 +728,16 @@ public:
         {
             return (x.currnode != currnode || x.currindex != currindex);
         }
+
+        inline bool is_invalid() const
+        {
+            return currnode == NULL;
+        }
+
+        inline bool is_end() const
+        {
+            return currindex == 0;
+        }
     };
 
 private:
@@ -717,8 +765,8 @@ private:
 
 public:
     explicit inline skiplist_multimap(const allocator_type& alloc = allocator_type())
+        : m_allocator(alloc)
     {
-        m_allocator = alloc;
         m_inner_allocator = m_allocator;
         m_leaf_allocator = m_allocator;
         m_size = m_level = 0;
@@ -733,9 +781,8 @@ public:
 
     explicit inline skiplist_multimap(const key_compare& kcf,
                                  const allocator_type& alloc = allocator_type())
+        : m_key_less(kcf), m_allocator(alloc)
     {
-        m_key_less = kcf;
-        m_allocator = alloc;
         m_inner_allocator = m_allocator;
         m_leaf_allocator = m_allocator;
         m_size = m_level = 0;

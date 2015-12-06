@@ -54,4 +54,4 @@ bloomfilter_test: bloomfilter_test.o
 	$(CXX) $(CFLAGS) -o $@ $< $(MEMMGR) -lpthread -lm
 
 clean:
-	rm *.o sl_test sl_multimap_test sl_compact_test sl_compact_merge_test sl_multimap_compact_test sl_multimap_compact_merge_test slp_test bloomfilter_test
+	rm -f *.o sl_test sl_multimap_test sl_compact_test sl_compact_merge_test sl_multimap_compact_test sl_multimap_compact_merge_test slp_test bloomfilter_test

@@ -25,7 +25,7 @@ namespace cmu {
 template <typename _Key, typename _Data,
           typename _Compare = std::less<_Key>,
           typename _Traits = skiplist_default_map_traits<_Key, _Data>,
-          typename _Alloc = std::allocator<std::pair<_Key, _Data>>>
+          typename _Alloc = std::allocator<std::pair<_Key, _Data> > >
 class skiplist_map_compact
 {
 public:
@@ -85,7 +85,7 @@ public:
             else {
                 do {
                     ++s_iter;
-                } while (!s_iter.is_end() && s_iter.data() == (data_type)0);
+                } while (!s_iter.is_end() && s_iter.is_lazy_deleted());
             }
             if (!d_iter.is_end() && !s_iter.is_end() &&
                 !key_less(d_iter.key(), s_iter.key()) &&
@@ -93,7 +93,7 @@ public:
             {
                 do {
                     ++s_iter;
-                } while (!s_iter.is_end() && s_iter.data() == (data_type)0);
+                } while (!s_iter.is_end() && s_iter.is_lazy_deleted());
             }
 
             in_dyna = s_iter.is_end();
@@ -109,6 +109,10 @@ public:
 
         inline iterator()
             : in_dyna(true)
+        { }
+
+        inline iterator(const key_compare& kcf)
+            : in_dyna(true), key_less(kcf)
         { }
 
         inline reference operator * () const
@@ -213,7 +217,7 @@ public:
             else {
                 do {
                     ++s_iter;
-                } while (!s_iter.is_end() && s_iter.data() == (data_type)0);
+                } while (!s_iter.is_end() && s_iter.is_lazy_deleted());
             }
             if (!d_iter.is_end() && !s_iter.is_end() &&
                 !key_less(d_iter.key(), s_iter.key()) &&
@@ -221,7 +225,7 @@ public:
             {
                 do {
                     ++s_iter;
-                } while (!s_iter.is_end() && s_iter.data() == (data_type)0);
+                } while (!s_iter.is_end() && s_iter.is_lazy_deleted());
             }
 
             in_dyna = s_iter.is_end();
@@ -237,6 +241,10 @@ public:
 
         inline const_iterator()
             : in_dyna(true)
+        { }
+
+        inline const_iterator(const key_compare& kcf)
+            : in_dyna(true), key_less(kcf)
         { }
 
         inline const_iterator(const iterator& it)
@@ -346,7 +354,7 @@ public:
             else {
                 do {
                     ++s_iter;
-                } while (!s_iter.is_end() && s_iter.data() == (data_type)0);
+                } while (!s_iter.is_end() && s_iter.is_lazy_deleted());
             }
             if (!d_iter.is_end() && !s_iter.is_end() &&
                 !key_less(d_iter.key(), s_iter.key()) &&
@@ -354,7 +362,7 @@ public:
             {
                 do {
                     ++s_iter;
-                } while (!s_iter.is_end() && s_iter.data() == (data_type)0);
+                } while (!s_iter.is_end() && s_iter.is_lazy_deleted());
             }
 
             in_dyna = s_iter.is_end();
@@ -370,6 +378,10 @@ public:
 
         inline reverse_iterator()
             : in_dyna(true)
+        { }
+
+        inline reverse_iterator(const key_compare& kcf)
+            : in_dyna(true), key_less(kcf)
         { }
 
         inline reference operator * () const
@@ -474,7 +486,7 @@ public:
             else {
                 do {
                     ++s_iter;
-                } while (!s_iter.is_end() && s_iter.data() == (data_type)0);
+                } while (!s_iter.is_end() && s_iter.is_lazy_deleted());
             }
             if (!d_iter.is_end() && !s_iter.is_end() &&
                 !key_less(d_iter.key(), s_iter.key()) &&
@@ -482,7 +494,7 @@ public:
             {
                 do {
                     ++s_iter;
-                } while (!s_iter.is_end() && s_iter.data() == (data_type)0);
+                } while (!s_iter.is_end() && s_iter.is_lazy_deleted());
             }
 
             in_dyna = s_iter.is_end();
@@ -498,6 +510,10 @@ public:
 
         inline const_reverse_iterator()
             : in_dyna(true)
+        { }
+
+        inline const_reverse_iterator(const key_compare& kcf)
+            : in_dyna(true), key_less(kcf)
         { }
 
         inline const_reverse_iterator(const reverse_iterator& it)
@@ -582,9 +598,8 @@ private:
 
 public:
     explicit inline skiplist_map_compact(const allocator_type& alloc = allocator_type())
-        : bf(LITTLEENDIAN, K, BITS_PER_KEY)
+        : bf(LITTLEENDIAN, K, BITS_PER_KEY), m_allocator(alloc)
     {
-        m_allocator = alloc;
         dyna_sl = new sl_type(alloc);
         static_sl = new sl_type(alloc);
 
@@ -595,10 +610,8 @@ public:
 
     explicit inline skiplist_map_compact(const key_compare& kcf,
                                  const allocator_type& alloc = allocator_type())
-        : bf(LITTLEENDIAN, K, BITS_PER_KEY)
+        : bf(LITTLEENDIAN, K, BITS_PER_KEY), m_key_less(kcf), m_allocator(alloc)
     {
-        m_key_less = kcf;
-        m_allocator = alloc;
         dyna_sl = new sl_type(kcf, alloc);
         static_sl = new sl_type(kcf, alloc);
 
@@ -704,13 +717,13 @@ public:
         typename sl_type::iterator sbegin = static_sl->begin();
         if (sbegin.is_end() || dbegin.is_end()) {
             if (!sbegin.is_end()) {
-                while (!sbegin.is_end() && sbegin.data() == (data_type)0) {
+                while (!sbegin.is_end() && sbegin.is_lazy_deleted()) {
                     ++sbegin;
                 }
             }
             return iterator(sbegin.is_end(), dbegin, sbegin, m_key_less);
         }
-        while (!sbegin.is_end() && sbegin.data() == (data_type)0) {
+        while (!sbegin.is_end() && sbegin.is_lazy_deleted()) {
             ++sbegin;
         }
         bool in_dyna =
@@ -740,13 +753,13 @@ public:
         typename sl_type::reverse_iterator sbegin = static_sl->rbegin();
         if (sbegin.is_end() || dbegin.is_end()) {
             if (!sbegin.is_end()) {
-                while (!sbegin.is_end() && sbegin.data() == (data_type)0) {
+                while (!sbegin.is_end() && sbegin.is_lazy_deleted()) {
                     ++sbegin;
                 }
             }
             return reverse_iterator(sbegin.is_end(), dbegin, sbegin, m_key_less);
         }
-        while (!sbegin.is_end() && sbegin.data() == (data_type)0) {
+        while (!sbegin.is_end() && sbegin.is_lazy_deleted()) {
             ++sbegin;
         }
         bool in_dyna =
@@ -848,11 +861,9 @@ public:
         if (USE_BLOOM_FILTER) {
             if (dyna_sl->size() == 0 || !bf.key_may_match(reinterpret_cast<const char*>(&key), sizeof(key_type))) {
                 SL_PRINT("shortcut by bloomfilter");
-                // TODO actually not a valid iterator, cannot increment/decrement correctly
                 it = static_sl->find(key);
-                if (!it.is_end() && it.data() != (data_type)0) {
-                    // NOTE should be
-                    // return iterator(false, dyna_sl->upper_bound(key), it, m_key_less);
+                if (!it.is_end() && !it.is_lazy_deleted()) {
+                    // NOTE incomplete iterator
                     return iterator(false, typename sl_type::iterator(), it, m_key_less);
                 }
                 return end();
@@ -862,14 +873,14 @@ public:
         it = dyna_sl->find(key);
         if (it.is_end()) {
             it = static_sl->find(key);
-            if (!it.is_end() && it.data() != (data_type)0) {
+            if (!it.is_end() && !it.is_lazy_deleted()) {
+                // NOTE incomplete iterator
                 return iterator(false, typename sl_type::iterator(), it, m_key_less);
             }
             return end();
         }
+        // NOTE incomplete iterator
         return iterator(true, it, typename sl_type::iterator(), m_key_less);
-        // NOTE should be
-        // return iterator(true, it, static_sl->upper_bound(key), m_key_less);
     }
 
     const_iterator find(const key_type& key) const
@@ -879,11 +890,9 @@ public:
         if (USE_BLOOM_FILTER) {
             if (dyna_sl->size() == 0 || !bf.key_may_match(reinterpret_cast<const char*>(&key), sizeof(key_type))) {
                 SL_PRINT("shortcut by bloomfilter");
-                // TODO actually not a valid iterator, cannot increment/decrement correctly
                 it = static_sl->find(key);
-                if (!it.is_end() && it.data() != (data_type)0) {
-                    // NOTE should be
-                    // return const_iterator(false, dyna_sl->upper_bound(key), it, m_key_less);
+                if (!it.is_end() && !it.is_lazy_deleted()) {
+                    // NOTE incomplete iterator
                     return const_iterator(false, typename sl_type::const_iterator(), it, m_key_less);
                 }
                 return end();
@@ -893,14 +902,14 @@ public:
         it = dyna_sl->find(key);
         if (it.is_end()) {
             it = static_sl->find(key);
-            if (!it.is_end() && it.data() != (data_type)0) {
+            if (!it.is_end() && !it.is_lazy_deleted()) {
+                // NOTE incomplete iterator
                 return const_iterator(false, typename sl_type::const_iterator(), it, m_key_less);
             }
             return end();
         }
+        // NOTE incomplete iterator
         return const_iterator(true, it, typename sl_type::const_iterator(), m_key_less);
-        // NOTE should be
-        // return const_iterator(true, it, static_sl->upper_bound(key), m_key_less);
     }
 
     void make_iter_complete(iterator& it)
@@ -908,7 +917,7 @@ public:
         if (it.in_dyna) {
             key_type key = it.d_iter.key();
             typename sl_type::iterator s_iter = static_sl->upper_bound(key);
-            while (!s_iter.is_end() && s_iter.data() == (data_type)0) {
+            while (!s_iter.is_end() && s_iter.is_lazy_deleted()) {
                 ++s_iter;
             }
             it.s_iter = s_iter;
@@ -924,7 +933,7 @@ public:
         if (it.in_dyna) {
             key_type key = it.d_iter.key();
             typename sl_type::iterator s_iter = static_sl->upper_bound(key);
-            while (!s_iter.is_end() && s_iter.data() == (data_type)0) {
+            while (!s_iter.is_end() && s_iter.is_lazy_deleted()) {
                 ++s_iter;
             }
             it.s_iter = s_iter;
@@ -946,7 +955,7 @@ public:
         typename sl_type::iterator static_it = static_sl->lower_bound(key);
 
         // NOTE skip deleted entries in static stage
-        while (!static_it.is_end() && static_it.data() == (data_type)0) {
+        while (!static_it.is_end() && static_it.is_lazy_deleted()) {
             ++static_it;
         }
 
@@ -968,7 +977,7 @@ public:
         else if (key_equal(dyna_it.key(), static_it.key())) {
             do {
                 ++static_it;
-            } while (!static_it.is_end() && static_it.data() == (data_type)0);
+            } while (!static_it.is_end() && static_it.is_lazy_deleted());
             return iterator(true, dyna_it, static_it, m_key_less);
         }
         else {
@@ -982,7 +991,7 @@ public:
         typename sl_type::const_iterator static_it = static_sl->lower_bound(key);
 
         // NOTE skip deleted entries in static stage
-        while (!static_it.is_end() && static_it.data() == (data_type)0) {
+        while (!static_it.is_end() && static_it.is_lazy_deleted()) {
             ++static_it;
         }
 
@@ -1004,7 +1013,7 @@ public:
         else if (key_equal(dyna_it.key(), static_it.key())) {
             do {
                 ++static_it;
-            } while (!static_it.is_end() && static_it.data() == (data_type)0);
+            } while (!static_it.is_end() && static_it.is_lazy_deleted());
             return const_iterator(true, dyna_it, static_it, m_key_less);
         }
         else {
@@ -1018,7 +1027,7 @@ public:
         typename sl_type::iterator static_it = static_sl->upper_bound(key);
 
         // NOTE skip deleted entries in static stage
-        while (!static_it.is_end() && static_it.data() == (data_type)0) {
+        while (!static_it.is_end() && static_it.is_lazy_deleted()) {
             ++static_it;
         }
 
@@ -1040,7 +1049,7 @@ public:
         else if (key_equal(dyna_it.key(), static_it.key())) {
             do {
                 ++static_it;
-            } while (!static_it.is_end() && static_it.data() == (data_type)0);
+            } while (!static_it.is_end() && static_it.is_lazy_deleted());
             return iterator(true, dyna_it, static_it, m_key_less);
         }
         else {
@@ -1054,7 +1063,7 @@ public:
         typename sl_type::const_iterator static_it = static_sl->upper_bound(key);
 
         // NOTE skip deleted entries in static stage
-        while (!static_it.is_end() && static_it.data() == (data_type)0) {
+        while (!static_it.is_end() && static_it.is_lazy_deleted()) {
             ++static_it;
         }
 
@@ -1076,7 +1085,7 @@ public:
         else if (key_equal(dyna_it.key(), static_it.key())) {
             do {
                 ++static_it;
-            } while (!static_it.is_end() && static_it.data() == (data_type)0);
+            } while (!static_it.is_end() && static_it.is_lazy_deleted());
             return const_iterator(true, dyna_it, static_it, m_key_less);
         }
         else {
@@ -1145,7 +1154,7 @@ public:
 
         typename sl_type::iterator static_iter = static_sl->find(key);
         if (!static_iter.is_end()) {
-            // NOTE result iterator is not valid
+            // NOTE incomplete iterator
             return std::pair<iterator, bool>(iterator(false, typename sl_type::iterator(), static_iter, m_key_less), false);
         }
 
@@ -1162,7 +1171,7 @@ private:
     inline std::pair<iterator, bool> insert_common(const key_type& key, const data_type& data)
     {
         std::pair<typename sl_type::iterator, bool> dyna_retval = dyna_sl->insert_common(key, data);
-        // NOTE result iterator is not complete
+        // NOTE incomplete iterator
         std::pair<iterator, bool> retval = std::pair<iterator, bool>(iterator(true, dyna_retval.first, typename sl_type::iterator(), m_key_less), dyna_retval.second);
 
         if (USE_BLOOM_FILTER) {
@@ -1175,8 +1184,8 @@ private:
     bool static_lazy_erase_one(const key_type& key)
     {
         typename sl_type::iterator it = static_sl->find(key);
-        if (!it.is_end() && it.data() != (data_type)0) {
-            it.data() = (data_type)0;
+        if (!it.is_end() && !it.is_lazy_deleted()) {
+            it.lazy_delete();
             SL_PRINT("static: lazy erased " << key);
             return true;
         }
@@ -1186,14 +1195,14 @@ private:
     void static_lazy_erase_iter(typename sl_type::iterator iter)
     {
         if (static_sl->is_valid_iterator(iter)) {
-            iter.data() = (data_type)0;
+            iter.lazy_delete();
         }
     }
 
     void static_lazy_erase_reverse_iter(typename sl_type::reverse_iterator iter)
     {
         if (static_sl->is_valid_reverse_iterator(iter)) {
-            iter.data() = (data_type)0;
+            iter.lazy_delete();
         }
     }
 

@@ -50,7 +50,7 @@
 #include <iostream>
 #include "indexes/tableindex.h"
 #include "common/tabletuple.h"
-#include "slp/skiplist_multimap_compact.h"
+#include "stx/btree_multimap.h"
 
 namespace voltdb {
 
@@ -68,7 +68,7 @@ class BinaryTreeMultiMapIndex : public TableIndex
     //typedef std::multimap<KeyType, const void*, KeyComparator> MapType;
     typedef h_index::AllocatorTracker<pair<const KeyType, const void*> > AllocatorType;
     //typedef std::multimap<KeyType, const void*, KeyComparator, AllocatorType> MapType;
-    typedef cmu::skiplist_multimap_compact<KeyType, const void*, KeyComparator, cmu::skiplist_default_map_traits<KeyType, const void*>, AllocatorType> MapType;
+    typedef stx::btree_multimap<KeyType, const void*, KeyComparator, stx::btree_default_map_traits<KeyType, const void*>, AllocatorType> MapType;
     typedef typename MapType::const_iterator MMCIter;
     typedef typename MapType::iterator MMIter;
     typedef typename MapType::const_reverse_iterator MMCRIter;
@@ -116,21 +116,22 @@ public:
         ++m_updates;
         return (deleted && inserted);
     }
-
+    
     bool setEntryToNewAddress(const TableTuple *tuple, const void* address, const void *oldAddress) {
         m_tmp1.setFromTuple(tuple, column_indices_, m_keySchema);
-        ++m_updates;
-
-//        int i = 0;
-        for (std::pair<MMIter,MMIter> key_iter = m_entries->equal_range(m_tmp1);
+        ++m_updates; 
+        
+//        int i = 0; 
+        std::pair<MMIter,MMIter> key_iter;
+        for (key_iter = m_entries->equal_range(m_tmp1);
              key_iter.first != key_iter.second;
              ++(key_iter.first))
         {
 //            VOLT_INFO("iteration %d", i++);
-
+            
             if (key_iter.first->second == oldAddress) {
                 m_entries->erase(key_iter.first);
-
+                
                 //std::pair<typename MapType::iterator, bool> retval = m_entries->insert(std::pair<KeyType, const void*>(m_tmp1, address));
                 //return retval.second;
 
@@ -138,11 +139,11 @@ public:
                 return true;
             }
         }
-
+        
         VOLT_INFO("Tuple not found.");
-
-//        return true;
-
+        
+//        return true; 
+        
         //key exists, but not this tuple
         return false;
     }
@@ -208,15 +209,9 @@ public:
             if (m_seqIter == m_entries->end())
                 return TableTuple();
             retval.move(const_cast<void*>(m_seqIter->second));
-            // NOTE not needed since no results from find() or insert() are used
-            /*
-            if (m_seqIter.is_incomplete()) {
-                m_entries->make_iter_complete(m_seqIter);
-            }
-            */
             ++m_seqIter;
         } else {
-            if (m_seqRIter == m_entries->rend())
+            if (m_seqRIter == (typename MapType::const_reverse_iterator) m_entries->rend())
                 return TableTuple();
             retval.move(const_cast<void*>(m_seqRIter->second));
             ++m_seqRIter;
@@ -245,21 +240,18 @@ public:
     }
 
     size_t getSize() const { return m_entries->size(); }
-
+    
     int64_t getMemoryEstimate() const {
-        return m_memoryEstimate + m_entries->bloomfilter_size();
+        return m_memoryEstimate;
     }
-
+    
     std::string getTypeName() const { return "BinaryTreeMultiMapIndex"; };
 
 protected:
     BinaryTreeMultiMapIndex(const TableIndexScheme &scheme) :
         TableIndex(scheme),
         m_begin(true),
-        m_eq(m_keySchema),
-        m_keyIter(MMCIter(KeyComparator(m_keySchema)), MMCIter(KeyComparator(m_keySchema))),
-        m_seqIter(KeyComparator(m_keySchema)),
-        m_seqRIter(KeyComparator(m_keySchema))
+        m_eq(m_keySchema)
     {
         m_match = TableTuple(m_tupleSchema);
         m_allocator = new AllocatorType(&m_memoryEstimate);
@@ -276,7 +268,8 @@ protected:
     inline bool deleteEntryPrivate(const TableTuple *tuple, const KeyType &key)
     {
         ++m_deletes;
-        for (std::pair<MMIter,MMIter> key_iter = m_entries->equal_range(key);
+        std::pair<MMIter,MMIter> key_iter;
+        for (key_iter = m_entries->equal_range(key);
                 key_iter.first != key_iter.second;
                 ++(key_iter.first))
         {
@@ -312,15 +305,13 @@ protected:
 
     // iteration stuff
     bool m_begin;
-
-    // comparison stuff
-    KeyEqualityChecker m_eq;
-
-    // more iteration stuff
     typename std::pair<MMCIter, MMCIter> m_keyIter;
     MMCIter m_seqIter;
     MMCRIter m_seqRIter;
     TableTuple m_match;
+
+    // comparison stuff
+    KeyEqualityChecker m_eq;
 };
 
 }

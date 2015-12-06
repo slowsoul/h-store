@@ -53,7 +53,7 @@ class skiplist_multimap;
 template <typename _Key, typename _Data,
           typename _Compare = std::less<_Key>,
           typename _Traits = skiplist_default_map_traits<_Key, _Data>,
-          typename _Alloc = std::allocator<std::pair<_Key, _Data>>>
+          typename _Alloc = std::allocator<std::pair<_Key, _Data> > >
 class skiplist_multimap_ro
 {
 #define SL_FRIENDS friend class skiplist_multimap_compact<_Key, _Data, _Compare, _Traits, _Alloc>;
@@ -293,6 +293,26 @@ public:
         {
             return (x.currnode != currnode || x.currindex != currindex || x.currdataindex != currdataindex);
         }
+
+        inline bool is_invalid() const
+        {
+            return currnode == NULL;
+        }
+
+        inline bool is_end() const
+        {
+            return currdataindex == currnode->data_count[currindex];
+        }
+
+        inline bool is_lazy_deleted() const
+        {
+            return data() == (data_type)0;
+        }
+
+        inline void lazy_delete()
+        {
+            data() = (data_type)0;
+        }
     };
 
     class const_iterator {
@@ -478,6 +498,21 @@ public:
         inline bool operator != (const const_iterator &x) const
         {
             return (x.currnode != currnode || x.currindex != currindex || x.currdataindex != currdataindex);
+        }
+
+        inline bool is_invalid() const
+        {
+            return currnode == NULL;
+        }
+
+        inline bool is_end() const
+        {
+            return currdataindex == currnode->data_count[currindex];
+        }
+
+        inline bool is_lazy_deleted() const
+        {
+            return data() == (data_type)0;
         }
     };
 
@@ -670,6 +705,26 @@ public:
         inline bool operator != (const reverse_iterator &x) const
         {
             return (x.currnode != currnode || x.currindex != currindex || x.currdataindex != currdataindex);
+        }
+
+        inline bool is_invalid() const
+        {
+            return currnode == NULL;
+        }
+
+        inline bool is_end() const
+        {
+            return currdataindex == 0;
+        }
+
+        inline bool is_lazy_deleted() const
+        {
+            return data() == (data_type)0;
+        }
+
+        inline void lazy_delete()
+        {
+            data() = (data_type)0;
         }
     };
 
@@ -867,6 +922,21 @@ public:
         {
             return (x.currnode != currnode || x.currindex != currindex || x.currdataindex != currdataindex);
         }
+
+        inline bool is_invalid() const
+        {
+            return currnode == NULL;
+        }
+
+        inline bool is_end() const
+        {
+            return currdataindex == 0;
+        }
+
+        inline bool is_lazy_deleted() const
+        {
+            return data() == (data_type)0;
+        }
     };
 
 private:
@@ -896,8 +966,8 @@ private:
 
 public:
     explicit inline skiplist_multimap_ro(const allocator_type& alloc = allocator_type())
+        : m_allocator(alloc)
     {
-        m_allocator = alloc;
         m_inner_allocator = m_allocator;
         m_leaf_allocator = m_allocator;
         m_data_allocator = m_allocator;
@@ -914,9 +984,8 @@ public:
 
     explicit inline skiplist_multimap_ro(const key_compare& kcf,
                                  const allocator_type& alloc = allocator_type())
+        : m_key_less(kcf), m_allocator(alloc)
     {
-        m_key_less = kcf;
-        m_allocator = alloc;
         m_inner_allocator = m_allocator;
         m_leaf_allocator = m_allocator;
         m_data_allocator = m_allocator;

@@ -274,7 +274,9 @@ protected:
     BinaryTreeUniqueIndex(const TableIndexScheme &scheme) :
         TableIndex(scheme),
         m_begin(true),
-        m_eq(m_keySchema)
+        m_eq(m_keySchema),
+        m_keyIter(KeyComparator(m_keySchema)),
+        m_keyRIter(KeyComparator(m_keySchema))
     {
         m_match = TableTuple(m_tupleSchema);
         m_allocator = new AllocatorType(&m_memoryEstimate);
@@ -313,12 +315,14 @@ protected:
 
     // iteration stuff
     bool m_begin;
-    typename MapType::const_iterator m_keyIter;
-    typename MapType::const_reverse_iterator m_keyRIter;
-    TableTuple m_match;
 
     // comparison stuff
     KeyEqualityChecker m_eq;
+
+    // more iteration stuff
+    typename MapType::const_iterator m_keyIter;
+    typename MapType::const_reverse_iterator m_keyRIter;
+    TableTuple m_match;
 };
 
 }

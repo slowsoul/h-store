@@ -47,7 +47,8 @@
 #define BINARYTREEUNIQUEINDEX_H_
 
 //#include <map>
-#include "slp/skiplist_map_compact.h"
+#include "stx/btree_map.h"
+#include "stx/btree.h"
 #include <iostream>
 #include "common/debuglog.h"
 #include "common/tabletuple.h"
@@ -66,7 +67,7 @@ class BinaryTreeUniqueIndex : public TableIndex
 
     //typedef std::map<KeyType, const void*, KeyComparator> MapType;
     typedef h_index::AllocatorTracker<pair<const KeyType, const void*> > AllocatorType;
-    typedef cmu::skiplist_map_compact<KeyType, const void*, KeyComparator, cmu::skiplist_default_map_traits<KeyType, const void*>, AllocatorType> MapType;
+    typedef stx::btree_map<KeyType, const void*, KeyComparator, stx::btree_default_map_traits<KeyType, const void*>, AllocatorType> MapType;
 
 public:
 
@@ -107,14 +108,14 @@ public:
         ++m_updates;
         return (deleted && inserted);
     }
-
+    
     bool setEntryToNewAddress(const TableTuple *tuple, const void* address, const void *oldAddress) {
         // set the key from the tuple
         m_tmp1.setFromTuple(tuple, column_indices_, m_keySchema);
-        ++m_updates;
-
-        m_entries->erase(m_tmp1);
-        std::pair<typename MapType::iterator, bool> retval = m_entries->upsert(std::pair<KeyType, const void*>(m_tmp1, address));
+        ++m_updates; 
+        
+        m_entries->erase(m_tmp1); 
+        std::pair<typename MapType::iterator, bool> retval = m_entries->insert(std::pair<KeyType, const void*>(m_tmp1, address));
         return retval.second;
     }
 
@@ -194,9 +195,6 @@ public:
             if (m_keyIter == m_entries->end())
                 return TableTuple();
             retval.move(const_cast<void*>(m_keyIter->second));
-            if (m_keyIter.is_incomplete()) {
-                m_entries->make_iter_complete(m_keyIter);
-            }
             ++m_keyIter;
         } else {
             if (m_keyRIter == (typename MapType::const_reverse_iterator) m_entries->rend())
@@ -218,9 +216,6 @@ public:
     bool advanceToNextKey()
     {
         if (m_begin) {
-            if (m_keyIter.is_incomplete()) {
-                m_entries->make_iter_complete(m_keyIter);
-            }
             ++m_keyIter;
             if (m_keyIter == m_entries->end())
             {
@@ -251,9 +246,9 @@ public:
         }*/
         //h_index::currentIndexID  = m_id;
         //return h_index::indexMemoryTable[m_id];
-        return m_memoryEstimate + m_entries->bloomfilter_size();
+        return m_memoryEstimate;
     }
-
+    
     std::string getTypeName() const { return "BinaryTreeUniqueIndex"; };
     std::string debug() const
     {
@@ -274,9 +269,7 @@ protected:
     BinaryTreeUniqueIndex(const TableIndexScheme &scheme) :
         TableIndex(scheme),
         m_begin(true),
-        m_eq(m_keySchema),
-        m_keyIter(KeyComparator(m_keySchema)),
-        m_keyRIter(KeyComparator(m_keySchema))
+        m_eq(m_keySchema)
     {
         m_match = TableTuple(m_tupleSchema);
         m_allocator = new AllocatorType(&m_memoryEstimate);
@@ -287,7 +280,8 @@ protected:
     {
         ++m_inserts;
         std::pair<typename MapType::iterator, bool> retval =
-            m_entries->insert(key, tuple->address());
+            m_entries->insert(std::pair<KeyType, const void*>(key,
+                        tuple->address()));
         return retval.second;
     }
 
@@ -299,10 +293,10 @@ protected:
 
     /*
        inline bool setEntryToNullPrivate(const KeyType &key)
-       {
-       ++m_updates;
+       {        
+       ++m_updates; 
 
-       m_entries->erase(key);
+       m_entries->erase(key); 
        std::pair<typename MapType::iterator, bool> retval = m_entries->insert(std::pair<KeyType, const void*>(key, NULL));
        return retval.second;
        }
@@ -315,14 +309,12 @@ protected:
 
     // iteration stuff
     bool m_begin;
-
-    // comparison stuff
-    KeyEqualityChecker m_eq;
-
-    // more iteration stuff
     typename MapType::const_iterator m_keyIter;
     typename MapType::const_reverse_iterator m_keyRIter;
     TableTuple m_match;
+
+    // comparison stuff
+    KeyEqualityChecker m_eq;
 };
 
 }
