@@ -3,7 +3,7 @@ CXX = g++ -std=gnu++0x
 CFLAGS = -g -O2 -fPIC -DDEBUG_SLP -DSL_DEBUG
 MEMMGR = -ltcmalloc_minimal
 
-all: sl_test sl_compact_test slp_test bloomfilter_test
+all: sl_test sl_multimap_test sl_compact_test sl_compact_merge_test sl_multimap_compact_test sl_multimap_compact_merge_test slp_test bloomfilter_test
 
 sl_test.o: sl_test.cc skiplist_map.h skiplist_traits.h
 	$(CXX) $(CFLAGS) -c -o $@ $<

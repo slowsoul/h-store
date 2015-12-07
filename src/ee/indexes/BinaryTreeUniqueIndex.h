@@ -47,7 +47,7 @@
 #define BINARYTREEUNIQUEINDEX_H_
 
 //#include <map>
-#include "slp/skiplist_map_compact.h"
+#include "slp/skiplist_map.h"
 #include <iostream>
 #include "common/debuglog.h"
 #include "common/tabletuple.h"
@@ -56,7 +56,7 @@
 namespace voltdb {
 
 /**
- * Index implemented as a Binary Unique Map.
+ * Index implemented as a Paged Deterministic SkipList Unique Map.
  * @see TableIndex
  */
 template<typename KeyType, class KeyComparator, class KeyEqualityChecker>
@@ -66,7 +66,7 @@ class BinaryTreeUniqueIndex : public TableIndex
 
     //typedef std::map<KeyType, const void*, KeyComparator> MapType;
     typedef h_index::AllocatorTracker<pair<const KeyType, const void*> > AllocatorType;
-    typedef cmu::skiplist_map_compact<KeyType, const void*, KeyComparator, cmu::skiplist_default_map_traits<KeyType, const void*>, AllocatorType> MapType;
+    typedef cmu::skiplist_map<KeyType, const void*, KeyComparator, cmu::skiplist_default_map_traits<KeyType, const void*>, AllocatorType> MapType;
 
 public:
 
@@ -114,7 +114,7 @@ public:
         ++m_updates;
 
         m_entries->erase(m_tmp1);
-        std::pair<typename MapType::iterator, bool> retval = m_entries->upsert(std::pair<KeyType, const void*>(m_tmp1, address));
+        std::pair<typename MapType::iterator, bool> retval = m_entries->insert(std::pair<KeyType, const void*>(m_tmp1, address));
         return retval.second;
     }
 
@@ -194,9 +194,6 @@ public:
             if (m_keyIter == m_entries->end())
                 return TableTuple();
             retval.move(const_cast<void*>(m_keyIter->second));
-            if (m_keyIter.is_incomplete()) {
-                m_entries->make_iter_complete(m_keyIter);
-            }
             ++m_keyIter;
         } else {
             if (m_keyRIter == (typename MapType::const_reverse_iterator) m_entries->rend())
@@ -218,9 +215,6 @@ public:
     bool advanceToNextKey()
     {
         if (m_begin) {
-            if (m_keyIter.is_incomplete()) {
-                m_entries->make_iter_complete(m_keyIter);
-            }
             ++m_keyIter;
             if (m_keyIter == m_entries->end())
             {
@@ -251,7 +245,7 @@ public:
         }*/
         //h_index::currentIndexID  = m_id;
         //return h_index::indexMemoryTable[m_id];
-        return m_memoryEstimate + m_entries->bloomfilter_size();
+        return m_memoryEstimate;
     }
 
     std::string getTypeName() const { return "BinaryTreeUniqueIndex"; };
@@ -274,9 +268,7 @@ protected:
     BinaryTreeUniqueIndex(const TableIndexScheme &scheme) :
         TableIndex(scheme),
         m_begin(true),
-        m_eq(m_keySchema),
-        m_keyIter(KeyComparator(m_keySchema)),
-        m_keyRIter(KeyComparator(m_keySchema))
+        m_eq(m_keySchema)
     {
         m_match = TableTuple(m_tupleSchema);
         m_allocator = new AllocatorType(&m_memoryEstimate);
@@ -287,7 +279,8 @@ protected:
     {
         ++m_inserts;
         std::pair<typename MapType::iterator, bool> retval =
-            m_entries->insert(key, tuple->address());
+            m_entries->insert(std::pair<KeyType, const void*>(key,
+                        tuple->address()));
         return retval.second;
     }
 
@@ -315,14 +308,12 @@ protected:
 
     // iteration stuff
     bool m_begin;
-
-    // comparison stuff
-    KeyEqualityChecker m_eq;
-
-    // more iteration stuff
     typename MapType::const_iterator m_keyIter;
     typename MapType::const_reverse_iterator m_keyRIter;
     TableTuple m_match;
+
+    // comparison stuff
+    KeyEqualityChecker m_eq;
 };
 
 }

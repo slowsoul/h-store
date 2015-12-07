@@ -1111,17 +1111,6 @@ private:
         return retval;
     }
 
-    bool static_lazy_erase_one(const key_type& key)
-    {
-        typename sl_ro_type::iterator it = static_sl->find(key);
-        if (!it.is_end()) {
-            it.lazy_delete();
-            SL_PRINT("static: lazy erased " << key);
-            return true;
-        }
-        return false;
-    }
-
 public:
     // *** Public Erase Functions
 
@@ -1129,11 +1118,11 @@ public:
     {
         if (USE_BLOOM_FILTER) {
             if (dyna_sl->size() == 0 || !bf.key_may_match(reinterpret_cast<const char*>(&key), sizeof(key_type))) {
-                return static_lazy_erase_one(key);
+                return static_sl->lazy_erase_one(key);
             }
         }
 
-        return dyna_sl->erase_one(key) || static_lazy_erase_one(key);
+        return dyna_sl->erase_one(key) || static_sl->lazy_erase_one(key);
     }
 
     size_type erase(const key_type& key)
@@ -1149,12 +1138,22 @@ public:
 
     void erase(iterator iter)
     {
-        // TODO
+        if (iter.in_dyna) {
+            dyna_sl->erase(iter.d_iter);
+        }
+        else {
+            static_sl->lazy_erase(iter.s_iter);
+        }
     }
 
     void erase(reverse_iterator iter)
     {
-        // TODO
+        if (iter.in_dyna) {
+            dyna_sl->erase(iter.d_iter);
+        }
+        else {
+            static_sl->lazy_erase(iter.s_iter);
+        }
     }
 
 public:

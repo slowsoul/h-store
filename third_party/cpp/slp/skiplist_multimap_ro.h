@@ -1557,7 +1557,7 @@ public:
         for (i = 0; key_greater(key, ln->key[i]); i++);
 
         iterator res = iterator(ln, i, 0);
-        while (res != end() && res.data() == (data_type)0) {
+        while (!res.is_end() && res.is_lazy_deleted()) {
             ++res;
         }
         return res;
@@ -1595,7 +1595,7 @@ public:
         for (i = 0; key_greater(key, ln->key[i]); i++);
 
         iterator res = const_iterator(ln, i, 0);
-        while (res != end() && res.data() == (data_type)0) {
+        while (!res.is_end() && res.is_lazy_deleted()) {
             ++res;
         }
         return res;
@@ -1633,7 +1633,7 @@ public:
         for (i = 0; key_greaterequal(key, ln->key[i]); i++);
 
         iterator res = iterator(ln, i, 0);
-        while (res != end() && res.data() == (data_type)0) {
+        while (!res.is_end() && res.is_lazy_deleted()) {
             ++res;
         }
         return res;
@@ -1671,7 +1671,7 @@ public:
         for (i = 0; key_greaterequal(key, ln->key[i]); i++);
 
         iterator res = const_iterator(ln, i, 0);
-        while (res != end() && res.data() == (data_type)0) {
+        while (!res.is_end() && res.is_lazy_deleted()) {
             ++res;
         }
         return res;
@@ -1712,6 +1712,45 @@ public:
 
     }
     */
+
+public:
+    bool lazy_erase_one(const key_type& key)
+    {
+        iterator it = find(key);
+        if (!it.is_end()) {
+            it.lazy_delete();
+            --m_size;
+            return true;
+        }
+        return false;
+    }
+
+    bool lazy_erase(const key_type& key)
+    {
+        size_type c = 0;
+
+        while (lazy_erase_one(key)) {
+            c++;
+        }
+
+        return c;
+    }
+
+    void lazy_erase(iterator iter)
+    {
+        if (is_valid_iterator(iter) && !iter.is_lazy_deleted()) {
+            iter.lazy_delete();
+            --m_size;
+        }
+    }
+
+    void lazy_erase(reverse_iterator iter)
+    {
+        if (is_valid_reverse_iterator(iter) && !iter.is_lazy_deleted()) {
+            iter.lazy_delete();
+            --m_size;
+        }
+    }
 
 //private:
 public:

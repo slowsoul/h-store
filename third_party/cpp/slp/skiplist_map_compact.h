@@ -1181,31 +1181,6 @@ private:
         return retval;
     }
 
-    bool static_lazy_erase_one(const key_type& key)
-    {
-        typename sl_type::iterator it = static_sl->find(key);
-        if (!it.is_end() && !it.is_lazy_deleted()) {
-            it.lazy_delete();
-            SL_PRINT("static: lazy erased " << key);
-            return true;
-        }
-        return false;
-    }
-
-    void static_lazy_erase_iter(typename sl_type::iterator iter)
-    {
-        if (static_sl->is_valid_iterator(iter)) {
-            iter.lazy_delete();
-        }
-    }
-
-    void static_lazy_erase_reverse_iter(typename sl_type::reverse_iterator iter)
-    {
-        if (static_sl->is_valid_reverse_iterator(iter)) {
-            iter.lazy_delete();
-        }
-    }
-
 public:
     // *** Public Erase Functions
 
@@ -1213,18 +1188,18 @@ public:
     {
         if (USE_BLOOM_FILTER) {
             if (dyna_sl->size() == 0 || !bf.key_may_match(reinterpret_cast<const char*>(&key), sizeof(key_type))) {
-                return static_lazy_erase_one(key);
+                return static_sl->lazy_erase_one(key);
             }
         }
 
         // NOTE commented are incorrect
-        //return dyna_sl->erase_one(key) || static_lazy_erase_one(key);
+        //return dyna_sl->erase_one(key) || static_sl->lazy_erase_one(key);
         if (dyna_sl->erase_one(key)) {
-            static_lazy_erase_one(key);
+            static_sl->lazy_erase_one(key);
             return true;
         }
         else {
-            return static_lazy_erase_one(key);
+            return static_sl->lazy_erase_one(key);
         }
     }
 
@@ -1245,7 +1220,7 @@ public:
             dyna_sl->erase(iter.d_iter);
         }
         else {
-            static_lazy_erase_iter(iter.s_iter);
+            static_sl->lazy_erase(iter.s_iter);
         }
     }
 
@@ -1255,7 +1230,7 @@ public:
             dyna_sl->erase(iter.d_iter);
         }
         else {
-            static_lazy_erase_reverse_iter(iter.s_iter);
+            static_sl->lazy_erase(iter.s_iter);
         }
     }
 

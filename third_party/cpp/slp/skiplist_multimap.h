@@ -8,6 +8,7 @@
 #include <memory>
 #include <cstddef>
 #include <cassert>
+#include <deque>
 #include "skiplist_traits.h"
 
 #ifdef SL_DEBUG
@@ -1661,8 +1662,8 @@ private:
             }
         }
 
-        right->count = rc - move;
-        left->count = lc + move;
+        right->count = rc + move;
+        left->count = lc - move;
     }
 
     std::pair<iterator, bool> insert_common(const key_type& key, const data_type& data)
@@ -1789,6 +1790,9 @@ public:
             }
         }
 
+        inner_node *inner_nodes[m_level+1];
+        short inner_indexes[m_level+1];
+        int path_size = 0;
         node *n = m_head;
         short i;
 
@@ -1800,6 +1804,8 @@ public:
                     break;
                 }
             }
+            inner_nodes[path_size] = in;
+            inner_indexes[path_size] = i;
 
             node *child = in->down[i];
             if (child->count < ((child->is_leaf) ? l_half_order : i_half_order)) {
@@ -1827,6 +1833,7 @@ public:
                         concat_node(lchild, child);
                         in->down[i-1] = lchild;
                         child = lchild;
+                        inner_indexes[path_size] = i-1;
                     }
                     else {
                         redistribute_left_right(lchild, child);
@@ -1841,6 +1848,7 @@ public:
             }
 
             n = child;
+            ++path_size;
         }
 
         leaf_node *ln = static_cast<leaf_node *>(n);
@@ -1865,6 +1873,25 @@ public:
 
         // found key
         leaf_shift_left(ln, i);
+
+        // NOTE adjust intermediate keys in inner nodes
+        if (path_size != 0) {
+            short count = ln->count;
+            if (ln->right == NULL) {
+                --count;
+            }
+            (inner_nodes[path_size-1])->key[inner_indexes[path_size-1]]
+                = ln->key[count-1];
+            for (int j = path_size-2; j >= 0; j--) {
+                inner_node *c = static_cast<inner_node *>(inner_nodes[j]->down[inner_indexes[j]]);
+                short count = c->count;
+                if (c->right == NULL) {
+                    --count;
+                }
+                inner_nodes[j]->key[inner_indexes[j]] = c->key[count-1];
+            }
+        }
+
         m_size--;
 
         if (m_head->count == 1 && m_head->is_leaf == 0) {
@@ -1890,16 +1917,208 @@ public:
 
     void erase(iterator iter)
     {
-        if (is_valid_iterator(iter)) {
-            // TODO need a erase_iter method
+        if (!is_valid_iterator(iter)) {
+            return;
+        }
+
+        const key_type& key = iter.key();
+        if (m_head_leaf->count > 1 && key_less(key, m_head_leaf->key[0])) {
+            return;
+        }
+        if (m_tail_leaf->count > 1) {
+            if (key_greater(key, m_tail_leaf->key[m_tail_leaf->count - 2])) {
+                return;
+            }
+        }
+        else if (m_tail_leaf->left != NULL) {
+            leaf_node *prev_leaf = m_tail_leaf->left;
+            if (key_greater(key, prev_leaf->key[prev_leaf->count - 1])) {
+                return;
+            }
+        }
+
+        // NOTE take shortcut if there is only one leaf node
+        if (0 == m_level) {
+            if (iter.currnode == m_head_leaf &&
+                key_equal(key, m_head_leaf->key[iter.currindex]))
+            {
+                leaf_shift_left(m_head_leaf, iter.currindex);
+                --m_size;
+            }
+            return;
+        }
+
+        // NOTE DFS to find inner node path to iter.currnode
+        inner_node *inner_nodes[m_level];
+        short inner_indexes[m_level];
+        short inner_counts[m_level];
+        int path_size = 0;
+        inner_node *head = static_cast<inner_node *>(m_head);
+        inner_nodes[0] = head;
+        short count = head->count - 1;
+        short i;
+        for (i = 0; i < count; i++) {
+            if (key_lessequal(key, head->key[i])) {
+                break;
+            }
+        }
+        inner_indexes[0] = i;
+        inner_counts[0] = count;
+        ++path_size;
+
+        while (path_size != 0) {
+            inner_node *cur_node = inner_nodes[path_size-1];
+            short cur_index = inner_indexes[path_size-1];
+            short cur_count = inner_counts[path_size-1];
+            node *next_node = cur_node->down[cur_index];
+            if (next_node->is_leaf) {
+                // fail fast
+                leaf_node *first_ln = static_cast<leaf_node *>(next_node);
+                if (key_greater(first_ln->key[0], key)) {
+                    break; // outmost while loop
+                }
+
+                bool found = false;
+                short i;
+                for (i = cur_index; i < cur_count; i++) {
+                    leaf_node *ln = static_cast<leaf_node *>(cur_node->down[i]);
+                    if (iter.currnode == ln &&
+                        key_equal(key, ln->key[iter.currindex]))
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    inner_indexes[path_size-1] = i;
+                    break; // outmost while loop
+                }
+                // backtrack
+                else {
+                    --path_size;
+                    while (path_size > 0 && inner_indexes[path_size-1] == inner_counts[path_size-1] - 1) {
+                        --path_size;
+                    }
+                    if (path_size > 0) {
+                        ++inner_indexes[path_size-1];
+                    }
+                }
+            }
+            // newly encountered inner node
+            else {
+                inner_node *in = static_cast<inner_node *>(next_node);
+                short count = in->count;
+                if (in->right == NULL) {
+                    --count;
+                }
+                short i;
+                for (i = 0; i < count; i++) {
+                    if (key_lessequal(key, in->key[i])) {
+                        break;
+                    }
+                }
+                inner_nodes[path_size] = in;
+                inner_indexes[path_size] = i;
+                inner_counts[path_size] = count;
+                ++path_size;
+            }
+        }
+
+        // NOTE actual top-down erasure
+        inner_node *adjust_inner_nodes[m_level];
+        short adjust_inner_indexes[m_level];
+        int adjust_path_size = 0;
+        node *child;
+        short leaf_erase_index = iter.currindex;
+        for (int j = 0;j < path_size; j++) {
+            inner_node *in = inner_nodes[j];
+            int i = inner_indexes[j];
+            adjust_inner_nodes[adjust_path_size] = in;
+            adjust_inner_indexes[adjust_path_size] = i;
+
+            child = in->down[i];
+            if (child->count < ((child->is_leaf) ? l_half_order : i_half_order)) {
+                if (i == 0) {
+                    node *rchild = in->down[i+1];
+                    if (rchild->count <= ((child->is_leaf) ? l_half_order : i_half_order)) {
+                        inner_shift_left(in, i);
+                        concat_node(child, rchild);
+                        in->down[i] = child;
+                    }
+                    else {
+                        redistribute_right_left(child, rchild);
+                        if (child->is_leaf) {
+                            in->key[i] = (static_cast<leaf_node *>(child))->key[child->count - 1];
+                        }
+                        else {
+                            in->key[i] = (static_cast<inner_node *>(child))->key[child->count - 1];
+                        }
+                    }
+                }
+                else {
+                    node *lchild = in->down[i-1];
+                    if (lchild->count <= ((child->is_leaf) ? l_half_order : i_half_order)) {
+                        if (child->is_leaf) {
+                            leaf_erase_index += lchild->count;
+                        }
+                        inner_shift_left(in, i-1);
+                        concat_node(lchild, child);
+                        in->down[i-1] = lchild;
+                        child = lchild;
+                        adjust_inner_indexes[adjust_path_size] = i-1;
+                    }
+                    else {
+                        short lc = lchild->count;
+                        short rc = child->count;
+                        redistribute_left_right(lchild, child);
+                        if (lchild->is_leaf) {
+                            leaf_erase_index += lc - ((lc + rc) >> 1);
+                            in->key[i-1] = (static_cast<leaf_node *>(lchild))->key[lchild->count - 1];
+                        }
+                        else {
+                            in->key[i-1] = (static_cast<inner_node *>(lchild))->key[lchild->count - 1];
+                        }
+                    }
+                }
+            }
+
+            ++adjust_path_size;
+        }
+
+        leaf_node *ln = static_cast<leaf_node *>(child);
+        leaf_shift_left(ln, leaf_erase_index);
+
+        // NOTE adjust intermediate keys in inner nodes
+        if (adjust_path_size != 0) {
+            short count = ln->count;
+            if (ln->right == NULL) {
+                --count;
+            }
+            (adjust_inner_nodes[adjust_path_size-1])->key[adjust_inner_indexes[adjust_path_size-1]]
+                = ln->key[count-1];
+            for (int j = adjust_path_size-2; j >= 0; j--) {
+                inner_node *c = static_cast<inner_node *>(adjust_inner_nodes[j]->down[adjust_inner_indexes[j]]);
+                short count = c->count;
+                if (c->right == NULL) {
+                    --count;
+                }
+                adjust_inner_nodes[j]->key[adjust_inner_indexes[j]] = c->key[count-1];
+            }
+        }
+
+        --m_size;
+
+        if (m_head->count == 1 && m_head->is_leaf == 0) {
+            inner_node *ihead = static_cast<inner_node *>(m_head);
+            m_head = ihead->down[0];
+            free_node(ihead);
+            m_level--;
         }
     }
 
     void erase(reverse_iterator iter)
     {
-        if (is_valid_reverse_iterator(iter)) {
-            // TODO need a erase_iter method
-        }
+        erase(iterator(iter.currnode, iter.currindex - 1));
     }
 
 #ifdef SL_DEBUG

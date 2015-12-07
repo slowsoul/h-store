@@ -74,15 +74,16 @@ int main() {
     }
 
     // erase key test
-    bool erased = slmap.erase(200);
-    assert(erased == false);
+    size_t erase_count = slmap.erase(200);
+    assert(erase_count == 0);
+
+    erase_count = slmap.erase(4);
+    assert(erase_count == 10);
 
     slmap.print(std::cout);
 
-    erased = slmap.erase(1);
-    assert(erased == true);
-
-    slmap.print(std::cout);
+    erase_count = slmap.erase(4);
+    assert(erase_count == 0);
 
     // iterator test
     std::cout << "after erase, iterator: " << std::endl;
@@ -97,8 +98,21 @@ int main() {
         }
     }
 
-    erased = slmap.erase(1);
-    assert(erased == false);
+    // erase iterator test
+    SkiplistType::iterator it = slmap.find(6);
+    erase_count = 0;
+    while (it != slmap.end()) {
+        slmap.erase(it);
+        ++erase_count;
+        std::cout << "after erase iterator: " << std::endl;
+        for (slmap_keyIter = slmap.begin();slmap_keyIter != slmap.end();++slmap_keyIter) {
+            std::cout << slmap_keyIter.key() << ": " << slmap_keyIter.data() << std::endl;
+        }
+        //slmap.print(std::cout);
+
+        it = slmap.find(6);
+    }
+    std::cout << "erase_count: " << erase_count << std::endl;
 
     slmap.print(std::cout);
 }

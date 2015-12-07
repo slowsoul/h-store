@@ -1679,8 +1679,8 @@ private:
             }
         }
 
-        right->count = rc - move;
-        left->count = lc + move;
+        right->count = rc + move;
+        left->count = lc - move;
     }
 
     std::pair<iterator, bool> insert_common(const key_type& key, const data_type& data)
@@ -1924,6 +1924,44 @@ public:
     {
         if (is_valid_reverse_iterator(iter)) {
             erase_one(iter.key());
+        }
+    }
+
+    bool lazy_erase_one(const key_type& key)
+    {
+        iterator it = find(key);
+        if (!it.is_end() && !it.is_lazy_deleted()) {
+            it.lazy_delete();
+            --m_size;
+            return true;
+        }
+        return false;
+    }
+
+    bool lazy_erase(const key_type& key)
+    {
+        size_type c = 0;
+
+        if (lazy_erase_one(key)) {
+            c++;
+        }
+
+        return c;
+    }
+
+    void lazy_erase(iterator iter)
+    {
+        if (is_valid_iterator(iter) && !iter.is_lazy_deleted()) {
+            iter.lazy_delete();
+            --m_size;
+        }
+    }
+
+    void lazy_erase(reverse_iterator iter)
+    {
+        if (is_valid_reverse_iterator(iter) && !iter.is_lazy_deleted()) {
+            iter.lazy_delete();
+            --m_size;
         }
     }
 

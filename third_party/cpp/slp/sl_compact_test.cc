@@ -177,7 +177,6 @@ int main() {
         std::cout << slmap_rev_keyIter.key() << ": " << slmap_rev_keyIter.data() << std::endl;
     }
 
-    // TODO merge test
     slmap.merge_dtos();
 
     std::cout << "after merge: iterator: " << std::endl;
