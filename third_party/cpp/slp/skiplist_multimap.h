@@ -1750,7 +1750,6 @@ private:
     {
         if (NULL == iter.currnode ||
             (iter.currnode)->is_leaf != 1 ||
-            iter == end() ||
             iter.currindex < 0 ||
             iter.currindex >= (iter.currnode)->count) {
             return false;
@@ -1762,7 +1761,6 @@ private:
     {
         if (NULL == iter.currnode ||
             (iter.currnode)->is_leaf != 1 ||
-            iter == rend() ||
             iter.currindex <= 0 ||
             iter.currindex > (iter.currnode)->count) {
             return false;

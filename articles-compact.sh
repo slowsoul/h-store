@@ -4,9 +4,9 @@
 
 trap onexit 1 2 3 15
 function onexit() {
-    local exit_status=${1:-$?}
-    pkill -f hstore.tag
-    exit $exit_status
+local exit_status=${1:-$?}
+pkill -f hstore.tag
+exit $exit_status
 }
 
 # ---------------------------------------------------------------------
@@ -16,41 +16,47 @@ ENABLE_ANTICACHE=false
 SITE_HOST="localhost"
 
 CLIENT_HOSTS=( \
-    "localhost" \
-#    "localhost" \
-#    "localhost" \
-#    "localhost" \
+#        "client1" \
+#        "client2" \
+#        "localhost" \
+#        "localhost" \
+#        "localhost" \
+        "localhost" \
+#        "huanchen@dev3.db.pdl.cmu.local" \
+#        "huanchen@dev3.db.pdl.cmu.local" \
 )
 
 BASE_CLIENT_THREADS=1
 BASE_SITE_MEMORY=8192
 BASE_SITE_MEMORY_PER_PARTITION=1024
-BASE_PROJECT="voter"
+BASE_PROJECT="articles"
 BASE_DIR=`pwd`
+#BASE_DIR="/home/huanchen"
 
 ANTICACHE_BLOCK_SIZE=1048576
-ANTICACHE_EVICT_SIZE=512*1024*1024 # 512MB
+#ANTICACHE_EVICT_SIZE=268400000
 ANTICACHE_THRESHOLD=.75
 
 CPU_SITE_BLACKLIST="0,2,4,6,8,10,12,14"
 
-#for round in 1 2 3 4 5 6 7 8 9 10; do
 for round in 1 2 3; do
 #for round in 1; do
-OUTPUT_PREFIX="voter-test-ori/$round-voter"
+#for round in 1 2 3 4 5 6 7 8 9 10; do
+OUTPUT_PREFIX="articles-test-compact/$round-articles"
 echo $OUTPUT_PREFIX
 BASE_ARGS=( \
-   
     # SITE DEBUG
     "-Dsite.status_enable=false" \
     "-Dsite.status_interval=20000" \
 #    "-Dsite.status_exec_info=true" \
+#    "-Dsite.status_check_for_zombies=true" \
 #    "-Dsite.exec_profiling=true" \
+#    "-Dsite.pool_profiling=true" \
 #     "-Dsite.network_profiling=false" \
-#     "-Dsite.log_backup=true" \
+#     "-Dsite.log_backup=true"\
 #    "-Dnoshutdown=true" \
     "-Dsite.log_dir=logs/$OUTPUT_PREFIX" \
-    
+
     # Site Params
     "-Dsite.jvm_asserts=false" \
     "-Dsite.specexec_enable=false" \
@@ -63,22 +69,28 @@ BASE_ARGS=( \
     "-Dsite.anticache_eviction_distribution=even" \
 
     "-Dsite.cpu_partition_blacklist=${CPU_SITE_BLACKLIST}" \
-    
+
+
+#    "-Dsite.queue_allow_decrease=true" \
+#    "-Dsite.queue_allow_increase=true" \
+#    "-Dsite.queue_threshold_factor=0.5" \
+
     # Client Params
     "-Dclient.scalefactor=1" \
     "-Dclient.memory=512" \
     "-Dclient.txnrate=50000" \
     "-Dclient.warmup=60000" \
-    "-Dclient.duration=300000 "\
+    "-Dclient.duration=300000" \
     "-Dclient.shared_connection=false" \
     "-Dclient.blocking=true" \
-    "-Dclient.blocking_concurrent=400" \
+    "-Dclient.blocking_concurrent=500" \
     #"-Dclient.throttle_backoff=100" \
     "-Dclient.output_interval=true" \
+    #"-Dclient.output_anticache_evictions=${OUTPUT_PREFIX}-evictions.csv" \
     "-Dclient.output_memory_stats=${OUTPUT_PREFIX}-memory.csv" \
     "-Dclient.output_csv=${OUTPUT_PREFIX}-results.csv" \
     #"-Dclient.output_index_stats=${OUTPUT_PREFIX}-index.csv" \
-    
+
     # Anti-Caching Experiments
     "-Dsite.anticache_enable=${ENABLE_ANTICACHE}" \
     "-Dsite.anticache_block_size=${ANTICACHE_BLOCK_SIZE}"
@@ -107,7 +119,9 @@ BASE_ARGS=( \
 )
 
 EVICTABLE_TABLES=( \
-    "votes" \
+    "users" \
+    "articles" \
+    "comments" \
 )
 
 EVICTABLES=""
@@ -137,20 +151,19 @@ done
 wait
 
 ant compile
-#for i in `seq 2 9`; do
-#for i in 2; do
 for i in 8; do
+#for i in 1; do
     HSTORE_HOSTS="${SITE_HOST}:0:0-"`expr $i - 1`
     NUM_CLIENTS=`expr $i \* $BASE_CLIENT_THREADS`
     SITE_MEMORY=`expr $BASE_SITE_MEMORY + \( $i \* $BASE_SITE_MEMORY_PER_PARTITION \)`
-    
+
     # BUILD PROJECT JAR
     ant hstore-prepare \
         -Dproject=${BASE_PROJECT} \
         -Dhosts=${HSTORE_HOSTS} \
         -Devictable=${EVICTABLES}
     test -f ${BASE_PROJECT}.jar || exit -1
-    
+
     # UPDATE CLIENTS
     CLIENT_COUNT=0
     CLIENT_HOSTS_STR=""
@@ -161,7 +174,7 @@ for i in 8; do
         fi
         CLIENT_HOSTS_STR="${CLIENT_HOSTS_STR}${CLIENT_HOST}"
     done
-    
+
     # DISTRIBUTE PROJECT JAR
     for HOST in ${HOSTS_TO_UPDATE[@]}; do
         if [ "$HOST" != $(hostname) ]; then
@@ -169,19 +182,18 @@ for i in 8; do
         fi
     done
     wait
-    
+
     # EXECUTE BENCHMARK
     ant hstore-benchmark ${BASE_ARGS[@]} \
         -Dproject=${BASE_PROJECT} \
-        -Dkillonzero=true \
+        -Dkillonzero=false \
         -Dclient.threads_per_host=${NUM_CLIENTS} \
         -Dsite.memory=${SITE_MEMORY} \
         -Dclient.hosts=${CLIENT_HOSTS_STR} \
         -Dclient.count=${CLIENT_COUNT}
     result=$?
     if [ $result != 0 ]; then
-        exit $result
+    exit $result
     fi
 done
-
 done

@@ -1814,6 +1814,9 @@ public:
             }
         }
 
+        inner_node *inner_nodes[m_level+1];
+        short inner_indexes[m_level+1];
+        int path_size = 0;
         node *n = m_head;
         short i;
 
@@ -1825,6 +1828,8 @@ public:
                     break;
                 }
             }
+            inner_nodes[path_size] = in;
+            inner_indexes[path_size] = i;
 
             node *child = in->down[i];
             if (child->count < ((child->is_leaf) ? l_half_order : i_half_order)) {
@@ -1852,6 +1857,7 @@ public:
                         concat_node(lchild, child);
                         in->down[i-1] = lchild;
                         child = lchild;
+                        inner_indexes[path_size] = i-1;
                     }
                     else {
                         redistribute_left_right(lchild, child);
@@ -1866,6 +1872,7 @@ public:
             }
 
             n = child;
+            ++path_size;
         }
 
         leaf_node *ln = static_cast<leaf_node *>(n);
@@ -1890,6 +1897,25 @@ public:
 
         // found key
         leaf_shift_left(ln, i);
+
+        // NOTE adjust intermediate keys in inner nodes
+        if (path_size != 0) {
+            short count = ln->count;
+            if (ln->right == NULL) {
+                --count;
+            }
+            (inner_nodes[path_size-1])->key[inner_indexes[path_size-1]]
+                = ln->key[count-1];
+            for (int j = path_size-2; j >= 0; j--) {
+                inner_node *c = static_cast<inner_node *>(inner_nodes[j]->down[inner_indexes[j]]);
+                short count = c->count;
+                if (c->right == NULL) {
+                    --count;
+                }
+                inner_nodes[j]->key[inner_indexes[j]] = c->key[count-1];
+            }
+        }
+
         m_size--;
 
         if (m_head->count == 1 && m_head->is_leaf == 0) {

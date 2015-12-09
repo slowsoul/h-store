@@ -1700,7 +1700,7 @@ public:
         return !(*this == other);
     }
 
-public:
+//public:
     /// *** Fast Copy: Assign Operator and Copy Constructors
 
     /*
@@ -1712,6 +1712,35 @@ public:
 
     }
     */
+
+private:
+    bool is_valid_iterator(iterator iter)
+    {
+        if (NULL == iter.currnode ||
+            (iter.currnode)->is_leaf != 1 ||
+            iter.currindex < 0 ||
+            iter.currindex >= (iter.currnode)->count ||
+            iter.currdataindex < 0 ||
+            iter.currdataindex >= (iter.currnode)->data_count[iter.currindex])
+        {
+            return false;
+        }
+        return true;
+    }
+
+    bool is_valid_reverse_iterator(reverse_iterator iter)
+    {
+        if (NULL == iter.currnode ||
+            (iter.currnode)->is_leaf != 1 ||
+            iter.currindex <= 0 ||
+            iter.currindex > (iter.currnode)->count ||
+            iter.currdataindex <= 0 ||
+            iter.currdataindex > (iter.currnode)->data_count[iter.currindex])
+        {
+            return false;
+        }
+        return true;
+    }
 
 public:
     bool lazy_erase_one(const key_type& key)

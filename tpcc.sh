@@ -42,7 +42,7 @@ CPU_SITE_BLACKLIST="0,2,4,6,8,10,12,14"
 #for round in 1; do
 for round in 1 2 3; do
 #for round in 1 2 3 4 5 6 7 8 9 10; do
-OUTPUT_PREFIX="tpcc-test/$round-tpcc"
+OUTPUT_PREFIX="tpcc-test-ori/$round-tpcc"
 echo $OUTPUT_PREFIX
 BASE_ARGS=( \
     # SITE DEBUG

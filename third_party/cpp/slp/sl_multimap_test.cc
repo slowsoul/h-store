@@ -115,4 +115,16 @@ int main() {
     std::cout << "erase_count: " << erase_count << std::endl;
 
     slmap.print(std::cout);
+
+    it = slmap.find(7);
+    ++it;
+    ++it;
+    ++it;
+    slmap.erase(it);
+    std::cout << "after erase intermediate iterator: " << std::endl;
+    for (slmap_keyIter = slmap.begin();slmap_keyIter != slmap.end();++slmap_keyIter) {
+        std::cout << slmap_keyIter.key() << ": " << slmap_keyIter.data() << std::endl;
+    }
+
+    slmap.print(std::cout);
 }
